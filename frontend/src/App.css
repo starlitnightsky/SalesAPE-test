@@ -1,0 +1,240 @@
+:root {
+  --primary-color: #646cff;
+  --primary-hover: #535bf2;
+  --background-color: #242424;
+  --text-color: rgba(255, 255, 255, 0.87);
+  --card-background: #1a1a1a;
+  --error-color: #ff4d4d;
+  --section-spacing: 2rem;
+  --border-radius: 12px;
+  --transition-speed: 0.3s;
+}
+
+.App {
+  text-align: center;
+  min-height: 100vh;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  padding: 2rem;
+  background-color: var(--card-background);
+  margin-bottom: var(--section-spacing);
+}
+
+.App-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  color: var(--primary-color);
+}
+
+.App-header p {
+  margin: 1rem 0 0;
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.App-main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.joke-request-section {
+  background-color: var(--card-background);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  margin-bottom: var(--section-spacing);
+}
+
+.tabs {
+  display: flex;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 0.8rem;
+  border: none;
+  background: none;
+  color: var(--text-color);
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: calc(var(--border-radius) - 4px);
+  transition: all var(--transition-speed);
+}
+
+.tab-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.tab-button.active {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.tab-content {
+  padding: 1.5rem;
+}
+
+.joke-form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.joke-input {
+  flex: 1;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  border: 2px solid var(--primary-color);
+  border-radius: 8px;
+  background-color: var(--card-background);
+  color: var(--text-color);
+  transition: border-color var(--transition-speed);
+}
+
+.joke-input:focus {
+  outline: none;
+  border-color: var(--primary-hover);
+}
+
+.category-select {
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  border: 2px solid var(--primary-color);
+  border-radius: 8px;
+  background-color: var(--card-background);
+  color: var(--text-color);
+  cursor: pointer;
+  transition: border-color var(--transition-speed);
+}
+
+.category-select:focus {
+  outline: none;
+  border-color: var(--primary-hover);
+}
+
+.joke-button {
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  color: white;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+}
+
+.joke-button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.joke-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.joke-container {
+  background-color: var(--card-background);
+  padding: 2rem;
+  border-radius: var(--border-radius);
+  margin-top: var(--section-spacing);
+  text-align: left;
+  animation: fadeIn var(--transition-speed);
+}
+
+.joke-category {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.joke-setup {
+  font-size: 1.2rem;
+  margin-bottom: 1rem;
+  line-height: 1.5;
+}
+
+.joke-delivery {
+  font-size: 1.2rem;
+  color: var(--primary-color);
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.joke-text {
+  font-size: 1.2rem;
+  line-height: 1.5;
+}
+
+.error-message {
+  color: var(--error-color);
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: rgba(255, 77, 77, 0.1);
+  border-radius: 8px;
+  animation: fadeIn var(--transition-speed);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 600px) {
+  .joke-form {
+    flex-direction: column;
+  }
+
+  .App-header h1 {
+    font-size: 2rem;
+  }
+
+  .App-header p {
+    font-size: 1rem;
+  }
+
+  .tab-button {
+    padding: 0.6rem;
+    font-size: 0.9rem;
+  }
+
+  .category-select {
+    width: 100%;
+  }
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
