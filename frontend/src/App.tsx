@@ -6,7 +6,7 @@ import { JokeDisplay } from './components/JokeDisplay';
 import { JokeRequestSection } from './components/JokeRequestSection';
 
 function App() {
-  const [joke, setJoke] = useState<JokeResponse | null>(null);
+  const [jokes, setJokes] = useState<JokeResponse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [request, setRequest] = useState('');
@@ -15,6 +15,9 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [jokeId, setJokeId] = useState('');
   const [activeTab, setActiveTab] = useState('ask');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [amount, setAmount] = useState(5);
 
   useEffect(() => {
     fetchCategories();
@@ -39,10 +42,13 @@ function App() {
     setError(null);
 
     try {
-      const data = await jokeService.askForJoke(request);
-      setJoke(data);
+      const data = await jokeService.askForJoke(request, amount);
+      setJokes(data.jokes || []);
+      setHasMore(data.has_more);
+      setCurrentPage(1);
     } catch (err) {
       handleError(err);
+      setJokes([]);
     } finally {
       setLoading(false);
     }
@@ -54,10 +60,12 @@ function App() {
     setError(null);
 
     try {
-      const data = await jokeService.searchJoke(searchQuery, selectedCategory);
-      setJoke(data);
+      const data = await jokeService.searchJoke(searchQuery, selectedCategory, currentPage, amount);
+      setJokes(data.jokes || []);
+      setHasMore(data.has_more);
     } catch (err) {
       handleError(err);
+      setJokes([]);
     } finally {
       setLoading(false);
     }
@@ -72,7 +80,28 @@ function App() {
 
     try {
       const data = await jokeService.getJokeById(jokeId);
-      setJoke(data);
+      setJokes([data]);
+      setHasMore(false);
+      setCurrentPage(1);
+    } catch (err) {
+      handleError(err);
+      setJokes([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMore = async () => {
+    if (!hasMore || loading) return;
+
+    setLoading(true);
+    try {
+      if (activeTab === 'search') {
+        const data = await jokeService.searchJoke(searchQuery, selectedCategory, currentPage + 1, amount);
+        setJokes(prev => [...(prev || []), ...(data.jokes || [])]);
+        setHasMore(data.has_more);
+        setCurrentPage(prev => prev + 1);
+      }
     } catch (err) {
       handleError(err);
     } finally {
@@ -107,7 +136,22 @@ function App() {
         />
 
         {error && <div className="error-message">{error}</div>}
-        {joke && <JokeDisplay joke={joke} />}
+        
+        <div className="jokes-container">
+          {(jokes || []).map((joke, index) => (
+            <JokeDisplay key={index} joke={joke} />
+          ))}
+        </div>
+
+        {hasMore && (
+          <button 
+            className="load-more-button"
+            onClick={loadMore}
+            disabled={loading}
+          >
+            {loading ? 'Loading...' : 'Load More'}
+          </button>
+        )}
       </main>
     </div>
   );

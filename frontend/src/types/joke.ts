@@ -6,6 +6,13 @@ export interface JokeResponse {
   is_safe: boolean;
 }
 
+export interface JokesResponse {
+  jokes: JokeResponse[];
+  total: number;
+  page: number;
+  has_more: boolean;
+}
+
 export interface JokeAPIResponse {
   error: boolean;
   category: string;

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 import requests
 from pydantic import BaseModel
@@ -27,6 +27,12 @@ class JokeResponse(BaseModel):
     id: int
     safe: bool
     lang: str
+
+class JokesResponse(BaseModel):
+    jokes: List[JokeResponse]
+    total: int
+    page: int
+    has_more: bool
 
 class JokeRequest(BaseModel):
     request: str
@@ -68,28 +74,42 @@ async def root():
     return {"message": "Welcome to Joke Search API"}
 
 @app.post("/api/ask")
-async def ask_for_joke(joke_request: JokeRequest):
+async def ask_for_joke(joke_request: JokeRequest, amount: int = Query(1, ge=1, le=10)):
     """Handle natural language requests for jokes."""
     try:
         category = extract_category(joke_request.request)
-        response = requests.get(f"https://v2.jokeapi.dev/joke/{category}")
+        response = requests.get(f"https://v2.jokeapi.dev/joke/{category}?amount={amount}")
         response.raise_for_status()
         joke_data = response.json()
         
-        # Format the response based on joke type
-        if joke_data.get('type') == 'twopart':
-            return {
-                "category": joke_data['category'],
-                "setup": joke_data['setup'],
-                "delivery": joke_data['delivery'],
-                "is_safe": joke_data['safe']
-            }
-        else:
-            return {
-                "category": joke_data['category'],
-                "joke": joke_data['joke'],
-                "is_safe": joke_data['safe']
-            }
+        if joke_data.get('error'):
+            raise HTTPException(status_code=400, detail=joke_data.get('message', 'Error fetching joke'))
+        
+        # Handle both single joke and multiple jokes response
+        jokes = joke_data.get('jokes', [joke_data])
+        
+        formatted_jokes = []
+        for joke in jokes:
+            if joke.get('type') == 'twopart':
+                formatted_jokes.append({
+                    "category": joke['category'],
+                    "setup": joke['setup'],
+                    "delivery": joke['delivery'],
+                    "is_safe": joke['safe']
+                })
+            else:
+                formatted_jokes.append({
+                    "category": joke['category'],
+                    "joke": joke['joke'],
+                    "is_safe": joke['safe']
+                })
+        
+        return {
+            "jokes": formatted_jokes,
+            "total": len(formatted_jokes),
+            "page": 1,
+            "has_more": False
+        }
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail="Error fetching joke")
 
@@ -103,17 +123,50 @@ async def get_joke(joke_id: int):
         raise HTTPException(status_code=404, detail="Joke not found")
 
 @app.get("/api/search")
-async def search_joke(query: str, category: Optional[str] = None):
+async def search_joke(
+    query: str,
+    category: Optional[str] = None,
+    page: int = Query(1, ge=1),
+    amount: int = Query(5, ge=1, le=10)
+):
     try:
         # Build the URL with parameters
         base_url = "https://v2.jokeapi.dev/joke/"
         category = category or "Any"
-        url = f"{base_url}{category}?contains={query}"
+        url = f"{base_url}{category}?contains={query}&amount={amount}"
         
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        return data
+        
+        if data.get('error'):
+            raise HTTPException(status_code=400, detail=data.get('message', 'Error searching for joke'))
+        
+        # Handle both single joke and multiple jokes response
+        jokes = data.get('jokes', [data])
+        
+        formatted_jokes = []
+        for joke in jokes:
+            if joke.get('type') == 'twopart':
+                formatted_jokes.append({
+                    "category": joke['category'],
+                    "setup": joke['setup'],
+                    "delivery": joke['delivery'],
+                    "is_safe": joke['safe']
+                })
+            else:
+                formatted_jokes.append({
+                    "category": joke['category'],
+                    "joke": joke['joke'],
+                    "is_safe": joke['safe']
+                })
+        
+        return {
+            "jokes": formatted_jokes,
+            "total": len(formatted_jokes),
+            "page": page,
+            "has_more": len(formatted_jokes) == amount
+        }
     except requests.RequestException as e:
         raise HTTPException(status_code=500, detail="Error searching for joke")
 

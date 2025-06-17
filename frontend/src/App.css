@@ -31,7 +31,6 @@
 .App-header {
   padding: 2rem;
   background-color: var(--card-background);
-  margin-bottom: var(--section-spacing);
 }
 
 .App-header h1 {
@@ -49,7 +48,7 @@
 .App-main {
   max-width: 800px;
   margin: 0 auto;
-  padding: 0 1rem;
+  padding: 1rem;
 }
 
 .joke-request-section {
@@ -154,7 +153,6 @@
   background-color: var(--card-background);
   padding: 2rem;
   border-radius: var(--border-radius);
-  margin-top: var(--section-spacing);
   text-align: left;
   animation: fadeIn var(--transition-speed);
 }
@@ -237,4 +235,34 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.jokes-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: var(--section-spacing);
+}
+
+.load-more-button {
+  margin: 2rem auto;
+  padding: 0.8rem 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--primary-color);
+  color: white;
+  cursor: pointer;
+  transition: background-color var(--transition-speed);
+  display: block;
+}
+
+.load-more-button:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+}
+
+.load-more-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
 }
