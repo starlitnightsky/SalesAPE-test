@@ -5,8 +5,18 @@ import { jokeService } from './services/jokeService';
 import { JokeDisplay } from './components/JokeDisplay';
 import { JokeRequestSection } from './components/JokeRequestSection';
 
+interface TabJokes {
+  jokes: JokeResponse[];
+  hasMore: boolean;
+  currentPage: number;
+}
+
 function App() {
-  const [jokes, setJokes] = useState<JokeResponse[]>([]);
+  const [tabJokes, setTabJokes] = useState<Record<string, TabJokes>>({
+    ask: { jokes: [], hasMore: false, currentPage: 1 },
+    search: { jokes: [], hasMore: false, currentPage: 1 },
+    id: { jokes: [], hasMore: false, currentPage: 1 }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [request, setRequest] = useState('');
@@ -15,8 +25,6 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [jokeId, setJokeId] = useState('');
   const [activeTab, setActiveTab] = useState('ask');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
   const [amount, setAmount] = useState(5);
 
   useEffect(() => {
@@ -36,6 +44,17 @@ function App() {
     setError(err instanceof Error ? err.message : 'Something went wrong');
   };
 
+  const updateTabJokes = (tab: string, jokes: JokeResponse[], hasMore: boolean, page: number = 1) => {
+    setTabJokes(prev => ({
+      ...prev,
+      [tab]: {
+        jokes: page === 1 ? jokes : [...prev[tab].jokes, ...jokes],
+        hasMore,
+        currentPage: page
+      }
+    }));
+  };
+
   const askForJoke = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -43,12 +62,10 @@ function App() {
 
     try {
       const data = await jokeService.askForJoke(request, amount);
-      setJokes(data.jokes || []);
-      setHasMore(data.has_more);
-      setCurrentPage(1);
+      updateTabJokes('ask', data.jokes, data.has_more);
     } catch (err) {
       handleError(err);
-      setJokes([]);
+      updateTabJokes('ask', [], false);
     } finally {
       setLoading(false);
     }
@@ -60,12 +77,16 @@ function App() {
     setError(null);
 
     try {
-      const data = await jokeService.searchJoke(searchQuery, selectedCategory, currentPage, amount);
-      setJokes(data.jokes || []);
-      setHasMore(data.has_more);
+      const data = await jokeService.searchJoke(
+        searchQuery,
+        selectedCategory,
+        tabJokes.search.currentPage,
+        amount
+      );
+      updateTabJokes('search', data.jokes, data.has_more);
     } catch (err) {
       handleError(err);
-      setJokes([]);
+      updateTabJokes('search', [], false);
     } finally {
       setLoading(false);
     }
@@ -80,33 +101,39 @@ function App() {
 
     try {
       const data = await jokeService.getJokeById(jokeId);
-      setJokes([data]);
-      setHasMore(false);
-      setCurrentPage(1);
+      updateTabJokes('id', [data], false);
     } catch (err) {
       handleError(err);
-      setJokes([]);
+      updateTabJokes('id', [], false);
     } finally {
       setLoading(false);
     }
   };
 
   const loadMore = async () => {
-    if (!hasMore || loading) return;
+    if (!tabJokes[activeTab].hasMore || loading) return;
 
     setLoading(true);
     try {
       if (activeTab === 'search') {
-        const data = await jokeService.searchJoke(searchQuery, selectedCategory, currentPage + 1, amount);
-        setJokes(prev => [...(prev || []), ...(data.jokes || [])]);
-        setHasMore(data.has_more);
-        setCurrentPage(prev => prev + 1);
+        const data = await jokeService.searchJoke(
+          searchQuery,
+          selectedCategory,
+          tabJokes.search.currentPage + 1,
+          amount
+        );
+        updateTabJokes('search', data.jokes, data.has_more, tabJokes.search.currentPage + 1);
       }
     } catch (err) {
       handleError(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    setError(null);
   };
 
   return (
@@ -119,7 +146,7 @@ function App() {
       <main className="App-main">
         <JokeRequestSection
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
           request={request}
           onRequestChange={setRequest}
           searchQuery={searchQuery}
@@ -138,12 +165,12 @@ function App() {
         {error && <div className="error-message">{error}</div>}
         
         <div className="jokes-container">
-          {(jokes || []).map((joke, index) => (
+          {tabJokes[activeTab].jokes.map((joke, index) => (
             <JokeDisplay key={index} joke={joke} />
           ))}
         </div>
 
-        {hasMore && (
+        {tabJokes[activeTab].hasMore && (
           <button 
             className="load-more-button"
             onClick={loadMore}
