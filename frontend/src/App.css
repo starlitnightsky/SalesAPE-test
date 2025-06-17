@@ -94,6 +94,7 @@
   display: flex;
   gap: 1rem;
   margin-bottom: 1rem;
+  width: 100%;
 }
 
 .joke-input {
@@ -265,4 +266,54 @@
 .load-more-button:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.tab-form-container {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  position: relative;
+  padding-right: 120px; /* Make space for the fixed clear button */
+}
+
+.clear-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 2px solid var(--error-color);
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--error-color);
+  cursor: pointer;
+  transition: all var(--transition-speed);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.clear-button:hover:not(:disabled) {
+  background-color: var(--error-color);
+  color: white;
+}
+
+.clear-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  border-color: var(--text-color);
+  color: var(--text-color);
+}
+
+@media (max-width: 600px) {
+  .tab-form-container {
+    padding-right: 0;
+    flex-direction: column;
+  }
+
+  .clear-button {
+    position: static;
+    width: 100%;
+    margin-top: 1rem;
+  }
 }

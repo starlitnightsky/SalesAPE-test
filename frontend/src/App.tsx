@@ -136,6 +136,18 @@ function App() {
     setError(null);
   };
 
+  const handleClearJokes = (tabId: string) => {
+    setTabJokes(prev => ({
+      ...prev,
+      [tabId]: {
+        jokes: [],
+        hasMore: false,
+        currentPage: 1
+      }
+    }));
+    setError(null);
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -160,6 +172,7 @@ function App() {
           onAskForJoke={askForJoke}
           onSearchJoke={searchJoke}
           onGetJokeById={getJokeById}
+          onClearJokes={handleClearJokes}
         />
 
         {error && <div className="error-message">{error}</div>}

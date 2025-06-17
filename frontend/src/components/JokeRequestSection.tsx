@@ -18,6 +18,19 @@ interface JokeRequestSectionProps {
   onAskForJoke: (e: React.FormEvent) => void;
   onSearchJoke: (e: React.FormEvent) => void;
   onGetJokeById: (e: React.FormEvent) => void;
+  onClearJokes: (tabId: string) => void;
+}
+
+interface TabConfig {
+  id: string;
+  label: string;
+  inputValue: string;
+  onInputChange: (value: string) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  buttonText: string;
+  placeholder: string;
+  inputType?: 'number' | 'text';
+  showCategories?: boolean;
 }
 
 export const JokeRequestSection: React.FC<JokeRequestSectionProps> = ({
@@ -36,6 +49,7 @@ export const JokeRequestSection: React.FC<JokeRequestSectionProps> = ({
   onAskForJoke,
   onSearchJoke,
   onGetJokeById,
+  onClearJokes,
 }) => {
   const tabs = [
     { id: 'ask', label: 'Ask for a Joke' },
@@ -43,47 +57,61 @@ export const JokeRequestSection: React.FC<JokeRequestSectionProps> = ({
     { id: 'id', label: 'Get by ID' },
   ];
 
+  const tabConfigs: Record<string, TabConfig> = {
+    ask: {
+      id: 'ask',
+      label: 'Ask for a Joke',
+      inputValue: request,
+      onInputChange: onRequestChange,
+      onSubmit: onAskForJoke,
+      buttonText: 'Get Joke',
+      placeholder: 'e.g., Tell me a programming joke',
+      inputType: 'text',
+    },
+    search: {
+      id: 'search',
+      label: 'Search Jokes',
+      inputValue: searchQuery,
+      onInputChange: onSearchQueryChange,
+      onSubmit: onSearchJoke,
+      buttonText: 'Search',
+      placeholder: 'Search for jokes...',
+      inputType: 'text',
+      showCategories: true,
+    },
+    id: {
+      id: 'id',
+      label: 'Get by ID',
+      inputValue: jokeId,
+      onInputChange: onJokeIdChange,
+      onSubmit: onGetJokeById,
+      buttonText: 'Get Joke',
+      placeholder: 'Enter joke ID',
+      inputType: 'number',
+    },
+  };
+
   return (
     <div className="joke-request-section">
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={onTabChange} />
       
       <div className="tab-content">
-        {activeTab === 'ask' && (
+        <div className="tab-form-container">
           <JokeForm
-            onSubmit={onAskForJoke}
-            inputValue={request}
-            onInputChange={onRequestChange}
-            buttonText="Get Joke"
-            placeholder="e.g., Tell me a programming joke"
+            {...tabConfigs[activeTab]}
             isLoading={isLoading}
+            categories={tabConfigs[activeTab].showCategories ? categories : undefined}
+            selectedCategory={tabConfigs[activeTab].showCategories ? selectedCategory : undefined}
+            onCategoryChange={tabConfigs[activeTab].showCategories ? onCategoryChange : undefined}
           />
-        )}
-
-        {activeTab === 'search' && (
-          <JokeForm
-            onSubmit={onSearchJoke}
-            inputValue={searchQuery}
-            onInputChange={onSearchQueryChange}
-            buttonText="Search"
-            placeholder="Search for jokes..."
-            isLoading={isLoading}
-            categories={categories}
-            selectedCategory={selectedCategory}
-            onCategoryChange={onCategoryChange}
-          />
-        )}
-
-        {activeTab === 'id' && (
-          <JokeForm
-            onSubmit={onGetJokeById}
-            inputValue={jokeId}
-            onInputChange={onJokeIdChange}
-            buttonText="Get Joke"
-            placeholder="Enter joke ID"
-            isLoading={isLoading}
-            inputType="number"
-          />
-        )}
+          <button 
+            className="clear-button"
+            onClick={() => onClearJokes(activeTab)}
+            disabled={isLoading}
+          >
+            Clear
+          </button>
+        </div>
       </div>
     </div>
   );
