@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import { JokeResponse } from './types/joke';
+import { JokeResponse, AIAnalysis } from './types/joke';
 import { jokeService } from './services/jokeService';
 import { JokeDisplay } from './components/JokeDisplay';
 import { JokeRequestSection } from './components/JokeRequestSection';
+import { AIAnalysisDisplay } from './components/AIAnalysisDisplay';
 
 interface TabJokes {
   jokes: JokeResponse[];
   hasMore: boolean;
   currentPage: number;
+  aiAnalysis?: AIAnalysis;
+  contextResponse?: string;
 }
 
 function App() {
@@ -44,13 +47,22 @@ function App() {
     setError(err instanceof Error ? err.message : 'Something went wrong');
   };
 
-  const updateTabJokes = (tab: string, jokes: JokeResponse[], hasMore: boolean, page: number = 1) => {
+  const updateTabJokes = (
+    tab: string, 
+    jokes: JokeResponse[], 
+    hasMore: boolean, 
+    page: number = 1,
+    aiAnalysis?: AIAnalysis,
+    contextResponse?: string
+  ) => {
     setTabJokes(prev => ({
       ...prev,
       [tab]: {
         jokes: page === 1 ? jokes : [...prev[tab].jokes, ...jokes],
         hasMore,
-        currentPage: page
+        currentPage: page,
+        aiAnalysis: page === 1 ? aiAnalysis : prev[tab].aiAnalysis,
+        contextResponse: page === 1 ? contextResponse : prev[tab].contextResponse
       }
     }));
   };
@@ -62,7 +74,14 @@ function App() {
 
     try {
       const data = await jokeService.askForJoke(request, amount);
-      updateTabJokes('ask', data.jokes, data.has_more);
+      updateTabJokes(
+        'ask', 
+        data.jokes, 
+        data.has_more, 
+        1, 
+        data.ai_analysis, 
+        data.context_response
+      );
     } catch (err) {
       handleError(err);
       updateTabJokes('ask', [], false);
@@ -151,8 +170,8 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>Joke Generator</h1>
-        <p>Multiple ways to get your jokes!</p>
+        <h1>🤖 AI-Powered Joke Generator</h1>
+        <p>Ask for jokes naturally and see how AI understands your requests!</p>
       </header>
 
       <main className="App-main">
@@ -176,6 +195,14 @@ function App() {
         />
 
         {error && <div className="error-message">{error}</div>}
+        
+        {/* Show AI Analysis for ask tab */}
+        {activeTab === 'ask' && tabJokes.ask.aiAnalysis && (
+          <AIAnalysisDisplay 
+            analysis={tabJokes.ask.aiAnalysis}
+            contextResponse={tabJokes.ask.contextResponse}
+          />
+        )}
         
         <div className="jokes-container">
           {tabJokes[activeTab].jokes.map((joke, index) => (
