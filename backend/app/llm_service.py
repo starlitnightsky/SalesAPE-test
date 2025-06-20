@@ -230,41 +230,60 @@ class LLMService:
         
         try:
             system_prompt = """
-            You are a helpful AI assistant that analyzes user requests for jokes and extracts relevant information to fetch appropriate jokes from an API.
-            
+            You are an expert AI assistant that deeply analyzes user requests for jokes by understanding the full context, intent, and emotional state of the user.
+
             Available joke categories: Programming, Dark, Misc, Pun, Spooky, Christmas, Any
-            
-            Your task is to:
-            1. Understand the user's intent and mood
-            2. Determine the most appropriate joke category
-            3. Extract any specific keywords or themes
-            4. Reason about the context and user preferences
-            
+
+            Your task is to perform a comprehensive contextual analysis:
+
+            1. **Context Understanding**: Analyze the full sentence structure, tone, and implied meaning
+            2. **Intent Recognition**: Understand what the user is really asking for, not just keywords
+            3. **Emotional Analysis**: Detect the user's mood, stress level, or emotional state
+            4. **Situational Context**: Consider the context (work, social, holiday, etc.)
+            5. **Category Selection**: Choose the most appropriate joke category based on context
+            6. **Keyword Extraction**: Identify relevant themes and topics for better joke matching
+
+            **Context Analysis Guidelines:**
+            - "I'm having a bad day" → Consider uplifting or relatable humor (Misc, or Dark if they seem to want edgy humor)
+            - "I'm stuck debugging code" → Programming jokes with relatable developer experiences
+            - "I need something clever" → Pun or witty humor
+            - "It's been a stressful week" → Consider stress-relief humor (Misc, or Dark for cathartic humor)
+            - "I want to impress my friends" → Clever or impressive humor (Pun, Programming)
+            - "I'm feeling festive" → Christmas or celebratory humor
+            - "I need a laugh" → Any category, focus on humor quality
+            - "Tell me something funny about work" → Programming (if tech work) or Misc (general work)
+            - "I'm bored" → Engaging, varied humor (Misc, Programming)
+            - "I want something different" → Consider less common categories (Spooky, Dark, Pun)
+
+            **Category Selection Logic:**
+            - Programming: Tech work, coding, computers, software, developer life
+            - Dark: When user seems to want edgy, cathartic, or boundary-pushing humor
+            - Misc: General humor, everyday situations, relatable content
+            - Pun: When user wants clever wordplay or intellectual humor
+            - Spooky: Halloween, horror themes, supernatural interests
+            - Christmas: Holiday cheer, festive mood, seasonal humor
+            - Any: When context is unclear or user wants variety
+
             Return a JSON object with the following structure:
             {
                 "category": "string (one of the available categories)",
-                "keywords": ["array of relevant keywords"],
-                "reasoning": "string explaining your analysis",
-                "user_mood": "string describing the user's apparent mood or context",
-                "suggested_amount": "number (1-10) of jokes to fetch"
+                "keywords": ["array of relevant keywords and themes"],
+                "reasoning": "detailed explanation of your contextual analysis",
+                "user_mood": "string describing the user's apparent mood, emotional state, or context",
+                "suggested_amount": "number (1-10) of jokes to fetch based on context"
             }
-            
-            Be thoughtful in your analysis. Consider:
-            - If someone asks for "programming jokes", use Programming category
-            - If someone mentions feeling sad, consider Dark or Misc categories
-            - If someone wants holiday cheer, consider Christmas category
-            - If someone asks for wordplay, use Pun category
-            - If the request is vague, use Any category
+
+            **Important**: Focus on understanding the user's situation, emotional state, and intent rather than just matching keywords. Consider the broader context of their request.
             """
             
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": f"Analyze this request: {user_request}"}
+                    {"role": "user", "content": f"Please analyze this request with full contextual understanding: {user_request}"}
                 ],
-                temperature=0.3,
-                max_tokens=300
+                temperature=0.4,
+                max_tokens=400
             )
             
             # Extract and parse the JSON response
@@ -292,16 +311,21 @@ class LLMService:
     
     def _fallback_analysis(self, user_request: str) -> Dict[str, Any]:
         """
-        Intelligent fallback analysis using NLP techniques.
+        Intelligent fallback analysis using enhanced NLP techniques with better context understanding.
         """
         # Extract meaningful words
         words = self._extract_meaningful_words(user_request)
         
-        # Calculate scores for each category
+        # Enhanced context analysis
+        context_analysis = self._analyze_context(user_request, words)
+        
+        # Calculate scores for each category with context weighting
         category_scores = {}
         for category in self.semantic_groups.keys():
             score = self._calculate_category_score(words, category)
-            category_scores[category] = score
+            # Apply context-based adjustments
+            context_adjustment = self._get_context_adjustment(category, context_analysis)
+            category_scores[category] = score * context_adjustment
         
         # Select best category
         if category_scores:
@@ -313,15 +337,14 @@ class LLMService:
         else:
             category = 'Any'
         
-        # Detect user mood
-        user_mood = self._detect_user_mood(words)
+        # Enhanced mood detection with context
+        user_mood = self._detect_user_mood_with_context(user_request, words, context_analysis)
         
-        # Suggest amount
-        suggested_amount = self._suggest_amount(words, category, user_request)
+        # Suggest amount based on context
+        suggested_amount = self._suggest_amount_with_context(words, category, user_request, context_analysis)
         
-        # Create reasoning
-        top_keywords = words[:5] if words else []
-        reasoning = f"Intelligent analysis: Selected '{category}' category based on semantic analysis of keywords: {', '.join(top_keywords)}"
+        # Create detailed reasoning
+        reasoning = self._generate_contextual_reasoning(user_request, category, context_analysis, words)
         
         return {
             "category": category,
@@ -330,6 +353,153 @@ class LLMService:
             "user_mood": user_mood,
             "suggested_amount": suggested_amount
         }
+    
+    def _analyze_context(self, text: str, words: List[str]) -> Dict[str, Any]:
+        """Analyze the context of the user request."""
+        text_lower = text.lower()
+        
+        context = {
+            'is_question': '?' in text,
+            'is_exclamation': '!' in text,
+            'has_emotional_words': False,
+            'situation': 'general',
+            'intensity': 'normal',
+            'formality': 'casual'
+        }
+        
+        # Detect emotional context
+        emotional_indicators = {
+            'stress': ['stress', 'stressed', 'overwhelmed', 'busy', 'tired', 'exhausted'],
+            'sadness': ['sad', 'depressed', 'down', 'blue', 'unhappy', 'miserable'],
+            'frustration': ['frustrated', 'angry', 'mad', 'annoyed', 'irritated'],
+            'excitement': ['excited', 'thrilled', 'amazing', 'awesome', 'fantastic'],
+            'boredom': ['bored', 'boring', 'dull', 'monotonous'],
+            'celebration': ['celebrate', 'party', 'festive', 'happy', 'joy']
+        }
+        
+        for emotion, indicators in emotional_indicators.items():
+            if any(indicator in text_lower for indicator in indicators):
+                context['has_emotional_words'] = True
+                context['situation'] = emotion
+                break
+        
+        # Detect intensity
+        intensity_words = {
+            'high': ['really', 'very', 'extremely', 'super', 'incredibly'],
+            'low': ['just', 'only', 'barely', 'hardly', 'slightly']
+        }
+        
+        for intensity, indicators in intensity_words.items():
+            if any(indicator in text_lower for indicator in indicators):
+                context['intensity'] = intensity
+                break
+        
+        # Detect formality
+        formal_indicators = ['please', 'kindly', 'would you', 'could you']
+        if any(indicator in text_lower for indicator in formal_indicators):
+            context['formality'] = 'formal'
+        
+        return context
+    
+    def _get_context_adjustment(self, category: str, context: Dict[str, Any]) -> float:
+        """Get context-based adjustment for category scoring."""
+        adjustment = 1.0
+        
+        # Emotional context adjustments
+        if context['situation'] == 'stress':
+            if category in ['Misc', 'Programming']:
+                adjustment *= 1.3  # Relatable humor for stress relief
+            elif category == 'Dark':
+                adjustment *= 1.2  # Cathartic humor
+        elif context['situation'] == 'sadness':
+            if category in ['Misc', 'Christmas']:
+                adjustment *= 1.4  # Uplifting humor
+            elif category == 'Dark':
+                adjustment *= 1.1  # Cathartic humor
+        elif context['situation'] == 'frustration':
+            if category in ['Programming', 'Misc']:
+                adjustment *= 1.3  # Relatable humor
+        elif context['situation'] == 'excitement':
+            if category in ['Pun', 'Programming']:
+                adjustment *= 1.2  # Clever humor
+        elif context['situation'] == 'boredom':
+            if category in ['Misc', 'Programming', 'Pun']:
+                adjustment *= 1.3  # Engaging humor
+        elif context['situation'] == 'celebration':
+            if category == 'Christmas':
+                adjustment *= 1.5  # Festive humor
+            elif category in ['Misc', 'Pun']:
+                adjustment *= 1.2  # Fun humor
+        
+        # Intensity adjustments
+        if context['intensity'] == 'high':
+            adjustment *= 1.2  # More jokes for high intensity
+        elif context['intensity'] == 'low':
+            adjustment *= 0.8  # Fewer jokes for low intensity
+        
+        return adjustment
+    
+    def _detect_user_mood_with_context(self, text: str, words: List[str], context: Dict[str, Any]) -> str:
+        """Enhanced mood detection with context analysis."""
+        # Start with keyword-based mood detection
+        base_mood = self._detect_user_mood(words)
+        
+        # Override with context-based mood if context is stronger
+        if context['has_emotional_words']:
+            situation_mood_map = {
+                'stress': 'stressed',
+                'sadness': 'sad',
+                'frustration': 'frustrated',
+                'excitement': 'excited',
+                'boredom': 'bored',
+                'celebration': 'happy'
+            }
+            return situation_mood_map.get(context['situation'], base_mood)
+        
+        return base_mood
+    
+    def _suggest_amount_with_context(self, words: List[str], category: str, original_text: str, context: Dict[str, Any]) -> int:
+        """Enhanced amount suggestion with context consideration."""
+        base_amount = self._suggest_amount(words, category, original_text)
+        
+        # Context-based adjustments
+        if context['intensity'] == 'high':
+            base_amount = min(10, base_amount + 2)
+        elif context['intensity'] == 'low':
+            base_amount = max(1, base_amount - 1)
+        
+        if context['has_emotional_words']:
+            if context['situation'] in ['stress', 'sadness', 'frustration']:
+                base_amount = min(10, base_amount + 1)  # More jokes for emotional relief
+            elif context['situation'] == 'boredom':
+                base_amount = min(10, base_amount + 2)  # More jokes to combat boredom
+        
+        return base_amount
+    
+    def _generate_contextual_reasoning(self, user_request: str, category: str, context: Dict[str, Any], words: List[str]) -> str:
+        """Generate detailed reasoning based on context analysis."""
+        reasoning_parts = []
+        
+        # Base reasoning
+        reasoning_parts.append(f"Selected '{category}' category based on contextual analysis.")
+        
+        # Context-specific reasoning
+        if context['has_emotional_words']:
+            reasoning_parts.append(f"Detected {context['situation']} context - suggesting appropriate humor type.")
+        
+        if context['intensity'] != 'normal':
+            reasoning_parts.append(f"Request intensity: {context['intensity']} - adjusted joke quantity accordingly.")
+        
+        # Keyword reasoning
+        if words:
+            top_keywords = words[:5]
+            reasoning_parts.append(f"Key themes identified: {', '.join(top_keywords)}")
+        
+        # Formality reasoning
+        if context['formality'] == 'formal':
+            reasoning_parts.append("Formal request detected - focusing on appropriate humor.")
+        
+        return " ".join(reasoning_parts)
     
     async def generate_response_context(self, user_request: str, jokes_data: list) -> str:
         """
@@ -347,12 +517,27 @@ class LLMService:
         
         try:
             system_prompt = """
-            You are a friendly AI assistant that provides jokes with context. 
-            Based on the user's original request and the jokes provided, create a brief, 
-            friendly response that acknowledges their request and presents the jokes naturally.
+            You are a friendly, empathetic AI assistant that provides jokes with personalized context. 
+            
+            Your task is to create a brief, contextual response that:
+            1. Acknowledges the user's specific situation, mood, or request
+            2. Shows understanding of their context
+            3. Introduces the jokes naturally and appropriately
+            4. Maintains a warm, supportive tone
+            
+            **Context Guidelines:**
+            - If user is stressed/tired: Offer stress relief and understanding
+            - If user is sad: Provide uplifting, supportive context
+            - If user is bored: Make it engaging and exciting
+            - If user is excited: Match their enthusiasm
+            - If user is frustrated: Offer relatable, cathartic humor
+            - If user is celebrating: Match the festive mood
+            - If user is asking for work-related humor: Acknowledge the work context
+            - If user wants clever humor: Emphasize the wit and intelligence
             
             Keep your response concise (1-2 sentences) and conversational.
-            Don't repeat the jokes - just provide context for them.
+            Don't repeat the jokes - just provide personalized context for them.
+            Be empathetic and understanding of the user's situation.
             """
             
             jokes_text = "\n".join([
@@ -367,7 +552,7 @@ class LLMService:
                     {"role": "user", "content": f"User request: {user_request}\n\nJokes:\n{jokes_text}"}
                 ],
                 temperature=0.7,
-                max_tokens=150
+                max_tokens=200
             )
             
             return response.choices[0].message.content
